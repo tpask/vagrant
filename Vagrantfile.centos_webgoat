@@ -1,0 +1,46 @@
+# centos - installs webgoat
+
+IP="192.168.33.30"
+NAME="centos2"
+BOX="bento/centos-7.3"
+
+# having trouble with mounts and network?  
+# update guest additions prior to starting your machine:
+# at the command line, run "vagrant plugin install vagrant-vbguest"
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  config.vm.box = BOX
+  config.vm.network "private_network", ip: IP
+  config.vm.synced_folder "../shared", "/shared"
+
+  config.vm.provider "virtualbox" do |vb|
+  	vb.gui = false
+  	vb.memory = "4096"
+  	vb.cpus = 2
+  end
+
+  config.vm.provision "shell", run: "always", privileged: false, inline: <<-SHELL
+    version='8.0.0.M11'
+    FILE="webgoat-server-$version.jar"
+  
+    if [ ! -f $FILE ]; then
+      yum update -y 
+
+      for rpm in epel-release java-1.8.0-openjdk.x86_64 
+      do 
+        yum install -y $rpm
+      done
+      wget https://github.com/WebGoat/WebGoat/releases/download/v$version/webgoat-server-$version.jar
+      wget https://github.com/WebGoat/WebGoat/releases/download/v$version/webwolf-$version.jar
+    fi
+    java -jar webgoat-server-$version.jar --server.address=0.0.0.0 --server.port=8080 &
+    sleep 40s
+    java -jar webwolf-$version.jar
+    SHELL
+
+end
+
